@@ -138,7 +138,6 @@ const Confetti = ({ count = 30, duration = 5000, colors = ['#ff0000', '#00ff00',
 
 // Get screen dimensions
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const isSmallScreen = screenWidth < 360 || screenHeight < 600;
 
 const TicTacToeGameScreen = () => {
   const insets = useSafeAreaInsets();
@@ -324,11 +323,6 @@ const TicTacToeGameScreen = () => {
     }
   }, [matchWinnerName]);
 
-  // Calculate available space for content accounting for safe areas
-  const availableHeight = useMemo(() => 
-    screenHeight - (insets.top + insets.bottom), 
-  [screenHeight, insets]);
-
   const getPlayerNameBySymbol = useCallback((symbol: PlayerSymbol | null): string => {
     if (symbol === 'X') return player1Name || 'Player 1';
     if (symbol === 'O') return player2Name || 'Player 2';
@@ -358,26 +352,61 @@ const TicTacToeGameScreen = () => {
   // Determine if names are default placeholder names
   const areNamesDefault = player1Name === 'Player 1' && player2Name === 'Player 2';
 
-  // Calculate dynamic font and spacing sizes based on screen dimensions
-  const dynamicStyles = useMemo(() => {
-    // Scale values based on screen size
-    const scale = Math.min(screenWidth / 400, availableHeight / 700);
+  // Enhanced responsive calculations
+  const responsiveLayout = useMemo(() => {
+    const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
+    const topInset = insets.top;
+    const bottomInset = insets.bottom;
+    
+    // Available screen real estate
+    const availableHeight = screenHeight - topInset - bottomInset - statusBarHeight;
+    const isSmallScreen = screenWidth < 375 || availableHeight < 650;
+    const isVerySmallScreen = screenWidth < 350 || availableHeight < 600;
+    
+    // Scale factor based on screen size
+    const widthScale = Math.min(screenWidth / 375, 1.2);
+    const heightScale = Math.min(availableHeight / 700, 1.2);
+    const scale = Math.min(widthScale, heightScale);
+    
+    // Calculate proportional heights for each section
+    const titleSectionHeight = isVerySmallScreen ? availableHeight * 0.08 : availableHeight * 0.1;
+    const scoreboardHeight = isVerySmallScreen ? availableHeight * 0.12 : availableHeight * 0.15;
+    const boardSectionHeight = availableHeight * 0.55; // Main game area gets most space
+    const statusSectionHeight = isVerySmallScreen ? availableHeight * 0.1 : availableHeight * 0.12;
+    const buttonSectionHeight = isVerySmallScreen ? availableHeight * 0.08 : availableHeight * 0.1;
     
     return {
-      titleFontSize: Math.max(18, Math.min(28, 24 * scale)),
-      titleMargin: Math.max(6, Math.min(16, 12 * scale)),
-      playerNameFontSize: Math.max(12, Math.min(16, 14 * scale)),
-      symbolContainerSize: Math.max(24, Math.min(36, 30 * scale)),
+      // Layout heights
+      titleSectionHeight,
+      scoreboardHeight,
+      boardSectionHeight,
+      statusSectionHeight,
+      buttonSectionHeight,
+      
+      // Font sizes
+      titleFontSize: Math.max(20, Math.min(32, 26 * scale)),
+      playerNameFontSize: Math.max(11, Math.min(15, 13 * scale)),
       symbolFontSize: Math.max(14, Math.min(20, 17 * scale)),
-      scoreFontSize: Math.max(18, Math.min(24, 21 * scale)),
-      vsContainerSize: Math.max(24, Math.min(40, 32 * scale)),
-      vsFontSize: Math.max(10, Math.min(16, 13 * scale)),
-      statusFontSize: Math.max(14, Math.min(20, 17 * scale)),
-      buttonPadding: Math.max(8, Math.min(14, 11 * scale)),
+      scoreFontSize: Math.max(16, Math.min(24, 20 * scale)),
+      vsFontSize: Math.max(10, Math.min(14, 12 * scale)),
+      statusFontSize: Math.max(14, Math.min(18, 16 * scale)),
       buttonFontSize: Math.max(14, Math.min(18, 16 * scale)),
-      containerPadding: Math.max(8, Math.min(16, 12 * scale)),
+      hintFontSize: Math.max(11, Math.min(14, 12 * scale)),
+      
+      // Component sizes
+      symbolContainerSize: Math.max(28, Math.min(40, 34 * scale)),
+      vsContainerSize: Math.max(28, Math.min(40, 34 * scale)),
+      
+      // Spacing
+      horizontalPadding: Math.max(16, Math.min(24, 20 * widthScale)),
+      verticalSpacing: Math.max(8, Math.min(16, 12 * heightScale)),
+      
+      // Flags
+      isSmallScreen,
+      isVerySmallScreen,
+      scale
     };
-  }, [screenWidth, availableHeight]);
+  }, [screenWidth, screenHeight, insets]);
 
   return (
     <View style={styles.container}>
@@ -388,123 +417,98 @@ const TicTacToeGameScreen = () => {
         resizeMode="cover"
       >
         <SafeAreaView style={styles.overlay} edges={['top', 'left', 'right', 'bottom']}>
-          <View style={[
-            styles.content, 
-            { paddingHorizontal: dynamicStyles.containerPadding }
-          ]}>
-            {/* Title */}
-            <Text style={[
-              styles.title, 
-              { 
-                fontSize: dynamicStyles.titleFontSize,
-                marginVertical: dynamicStyles.titleMargin 
-              }
-            ]}>
-              Tic Tac Toe
-            </Text>
+          <View style={[styles.content, { paddingHorizontal: responsiveLayout.horizontalPadding }]}>
             
-            {/* Scoreboard */}
-            <View style={styles.scoreBoard}>
-              <View style={styles.playerScoreCard}>
-                <Text style={[
-                  styles.playerName, 
-                  { fontSize: dynamicStyles.playerNameFontSize }
-                ]}>
-                  {player1Name || 'Player 1'}
-                </Text>
+            {/* Title Section */}
+            <View style={[styles.titleSection, { height: responsiveLayout.titleSectionHeight }]}>
+              <Text style={[styles.title, { fontSize: responsiveLayout.titleFontSize }]}>
+                Tic Tac Toe
+              </Text>
+            </View>
+            
+            {/* Scoreboard Section */}
+            <View style={[styles.scoreboardSection, { height: responsiveLayout.scoreboardHeight }]}>
+              <View style={styles.scoreBoard}>
+                <View style={styles.playerScoreCard}>
+                  <Text style={[styles.playerName, { fontSize: responsiveLayout.playerNameFontSize }]} numberOfLines={1}>
+                    {player1Name || 'Player 1'}
+                  </Text>
+                  <View style={[
+                    styles.symbolContainer, 
+                    { 
+                      width: responsiveLayout.symbolContainerSize,
+                      height: responsiveLayout.symbolContainerSize,
+                      borderRadius: responsiveLayout.symbolContainerSize / 2
+                    }
+                  ]}>
+                    <Text style={[styles.symbolText, { fontSize: responsiveLayout.symbolFontSize }]}>X</Text>
+                  </View>
+                  <Text style={[styles.scoreValue, { fontSize: responsiveLayout.scoreFontSize }]}>
+                    {player1Score}
+                  </Text>
+                </View>
+                
                 <View style={[
-                  styles.symbolContainer, 
+                  styles.vsContainer, 
                   { 
-                    width: dynamicStyles.symbolContainerSize,
-                    height: dynamicStyles.symbolContainerSize,
-                    borderRadius: dynamicStyles.symbolContainerSize / 2
+                    width: responsiveLayout.vsContainerSize,
+                    height: responsiveLayout.vsContainerSize,
+                    borderRadius: responsiveLayout.vsContainerSize / 2 
                   }
                 ]}>
-                  <Text style={[
-                    styles.symbolText, 
-                    { fontSize: dynamicStyles.symbolFontSize }
-                  ]}>X</Text>
+                  <Text style={[styles.vsText, { fontSize: responsiveLayout.vsFontSize }]}>VS</Text>
                 </View>
-                <Text style={[
-                  styles.scoreValue, 
-                  { fontSize: dynamicStyles.scoreFontSize }
-                ]}>
-                  {player1Score}
-                </Text>
-              </View>
-              
-              <View style={[
-                styles.vsContainer, 
-                { 
-                  width: dynamicStyles.vsContainerSize,
-                  height: dynamicStyles.vsContainerSize,
-                  borderRadius: dynamicStyles.vsContainerSize / 2 
-                }
-              ]}>
-                <Text style={[
-                  styles.vsText, 
-                  { fontSize: dynamicStyles.vsFontSize }
-                ]}>VS</Text>
-              </View>
-              
-              <View style={styles.playerScoreCard}>
-                <Text style={[
-                  styles.playerName, 
-                  { fontSize: dynamicStyles.playerNameFontSize }
-                ]}>
-                  {player2Name || 'Player 2'}
-                </Text>
-                <View style={[
-                  styles.symbolContainer, 
-                  styles.symbolContainerO,
-                  { 
-                    width: dynamicStyles.symbolContainerSize,
-                    height: dynamicStyles.symbolContainerSize,
-                    borderRadius: dynamicStyles.symbolContainerSize / 2
-                  }
-                ]}>
-                  <Text style={[
-                    styles.symbolText, 
-                    { fontSize: dynamicStyles.symbolFontSize }
-                  ]}>O</Text>
+                
+                <View style={styles.playerScoreCard}>
+                  <Text style={[styles.playerName, { fontSize: responsiveLayout.playerNameFontSize }]} numberOfLines={1}>
+                    {player2Name || 'Player 2'}
+                  </Text>
+                  <View style={[
+                    styles.symbolContainer, 
+                    styles.symbolContainerO,
+                    { 
+                      width: responsiveLayout.symbolContainerSize,
+                      height: responsiveLayout.symbolContainerSize,
+                      borderRadius: responsiveLayout.symbolContainerSize / 2
+                    }
+                  ]}>
+                    <Text style={[styles.symbolText, { fontSize: responsiveLayout.symbolFontSize }]}>O</Text>
+                  </View>
+                  <Text style={[styles.scoreValue, { fontSize: responsiveLayout.scoreFontSize }]}>
+                    {player2Score}
+                  </Text>
                 </View>
-                <Text style={[
-                  styles.scoreValue, 
-                  { fontSize: dynamicStyles.scoreFontSize }
-                ]}>
-                  {player2Score}
-                </Text>
               </View>
             </View>
 
-            {/* Game Board - Board component now handles its own sizing */}
-            <View style={styles.boardContainer}>
+            {/* Game Board Section */}
+            <View style={[styles.boardSection, { height: responsiveLayout.boardSectionHeight }]}>
               <Board />
             </View>
 
-            {/* Status Display */}
-            <View style={styles.statusContainer}>
+            {/* Status Section */}
+            <View style={[styles.statusSection, { height: responsiveLayout.statusSectionHeight }]}>
               {matchWinnerName ? (
                 <Animated.Text 
                   style={[
                     styles.statusText, 
                     styles.winnerText,
                     { 
-                      fontSize: dynamicStyles.statusFontSize * 1.2,
+                      fontSize: responsiveLayout.statusFontSize * 1.1,
                       transform: [{ scale: winTextAnim }],
-                      textShadowColor: 'rgba(0, 0, 0, 0.5)',
-                      textShadowOffset: { width: 1, height: 1 },
-                      textShadowRadius: 3
                     }
                   ]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
                 >
                   {getStatusMessage()}
                 </Animated.Text>
               ) : (
-                <Text style={[
-                  styles.statusText, 
-                  { fontSize: dynamicStyles.statusFontSize }
-                ]}>
+                <Text 
+                  style={[styles.statusText, { fontSize: responsiveLayout.statusFontSize }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   {getStatusMessage()}
                 </Text>
               )}
@@ -512,40 +516,32 @@ const TicTacToeGameScreen = () => {
                 <View style={styles.hintContainer}>
                   <FontAwesome 
                     name="info-circle" 
-                    size={isSmallScreen ? 14 : 16} 
+                    size={responsiveLayout.isVerySmallScreen ? 12 : 14} 
                     color="#FFC107" 
                     style={styles.hintIcon} 
                   />
-                  <Text style={styles.hintText}>
-                    Next to remove: ({nextTileToRemove.row}, {nextTileToRemove.col})
+                  <Text style={[styles.hintText, { fontSize: responsiveLayout.hintFontSize }]}>
+                    Next tile will be removed
                   </Text>
                 </View>
               )}
             </View>
 
-            {/* Button Container */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[
-                  styles.button, 
-                  { paddingVertical: dynamicStyles.buttonPadding }
-                ]} 
-                onPress={handleStartNewMatchPress}
-              >
+            {/* Button Section */}
+            <View style={[styles.buttonSection, { height: responsiveLayout.buttonSectionHeight }]}>
+              <TouchableOpacity style={styles.button} onPress={handleStartNewMatchPress}>
                 <FontAwesome 
                   name="refresh" 
-                  size={isSmallScreen ? 16 : 18} 
+                  size={responsiveLayout.isVerySmallScreen ? 14 : 16} 
                   color="white" 
                   style={styles.buttonIcon} 
                 />
-                <Text style={[
-                  styles.buttonText, 
-                  { fontSize: dynamicStyles.buttonFontSize }
-                ]}>
+                <Text style={[styles.buttonText, { fontSize: responsiveLayout.buttonFontSize }]}>
                   New Match
                 </Text>
               </TouchableOpacity>
             </View>
+            
           </View>
 
           {/* Celebration Effects */}
@@ -556,6 +552,7 @@ const TicTacToeGameScreen = () => {
   );
 };
 
+export default TicTacToeGameScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -571,11 +568,31 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
+  
+  // Section containers with fixed heights
+  titleSection: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scoreboardSection: {
+    justifyContent: 'center',
+  },
+  boardSection: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusSection: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  buttonSection: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Title
   title: {
     fontWeight: 'bold',
     color: 'white',
@@ -584,33 +601,34 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 5
   },
+  
+  // Scoreboard
   scoreBoard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: 5,
   },
   playerScoreCard: {
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
-    padding: 10,
-    marginBottom: 20,
-    minWidth: 80,
-    width: '40%',
+    padding: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    maxWidth: 120,
   },
   playerName: {
     fontWeight: '600',
     color: 'white',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   symbolContainer: {
     backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   symbolContainerO: {
     backgroundColor: '#FF5252',
@@ -627,32 +645,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginHorizontal: 8,
   },
   vsText: {
     fontWeight: 'bold',
     color: 'white',
   },
-  boardContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  statusContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    marginVertical: 10,
-  },
+  
+  // Status
   statusText: {
     fontWeight: '600',
     color: 'white',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   winnerText: {
     color: '#FFD700',
     fontWeight: 'bold',
-    textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3
@@ -661,31 +670,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 15,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   hintIcon: {
-    marginRight: 6,
+    marginRight: 4,
   },
   hintText: {
-    fontSize: 14,
-    color: '#FFC107',
+    color: 'white',
+    fontWeight: '500',
   },
-  buttonContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
+  
+  // Button
   button: {
     backgroundColor: '#2196F3',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
-    borderRadius: 30,
-    width: '80%',
-    maxWidth: 300,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    minWidth: 140,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -693,12 +699,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   buttonIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
   },
 });
-
-export default React.memo(TicTacToeGameScreen);
